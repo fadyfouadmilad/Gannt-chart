@@ -1,0 +1,2237 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Advanced CPM Gantt Chart Generator — Automatic Calculations</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* Light Mode Variables */
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --accent-primary: #3b82f6;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            --critical-color: #dc2626;
+            --non-critical: #3b82f6;
+            --float-low: #10b981;
+            --float-medium: #f59e0b;
+            --float-high: #8b5cf6;
+            --grid-color: #e2e8f0;
+            --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.05);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .dark-mode {
+            /* Dark Mode Variables */
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --border-color: #475569;
+            --accent-primary: #60a5fa;
+            --accent-success: #34d399;
+            --accent-warning: #fbbf24;
+            --accent-danger: #f87171;
+            --critical-color: #f87171;
+            --non-critical: #60a5fa;
+            --float-low: #34d399;
+            --float-medium: #fbbf24;
+            --float-high: #a78bfa;
+            --grid-color: #475569;
+            --shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: var(--transition);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 24px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            animation: slideDown 0.6s ease-out;
+        }
+
+        .header-content h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-success));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .header-content h2 {
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .theme-toggle {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: var(--transition);
+        }
+
+        .theme-toggle:hover {
+            transform: rotate(15deg) scale(1.1);
+            border-color: var(--accent-primary);
+        }
+
+        /* Main Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Card Styling */
+        .card {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            padding: 28px;
+            border: 1px solid var(--border-color);
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .card-title i {
+            color: var(--accent-primary);
+        }
+
+        /* Controls */
+        .controls-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding: 20px;
+            background: var(--bg-tertiary);
+            border-radius: 16px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), #2563eb);
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--accent-success), #059669);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--accent-danger), #dc2626);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+        }
+
+        /* Table Styling */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            margin: 24px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1200px;
+        }
+
+        thead {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-success));
+            position: sticky;
+            top: 0;
+        }
+
+        th {
+            padding: 18px 16px;
+            text-align: left;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid var(--border-color);
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        tbody tr:nth-child(even) {
+            background: var(--bg-tertiary);
+        }
+
+        tbody tr:hover {
+            background: var(--bg-primary);
+            transform: translateX(8px);
+        }
+
+        td {
+            padding: 16px;
+            border: none;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .calculated-cell {
+            padding: 12px 14px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            box-shadow: var(--shadow-light);
+        }
+
+        .critical-cell {
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.1), rgba(220, 38, 38, 0.05));
+            color: var(--critical-color);
+        }
+
+        .remove-btn {
+            background: var(--accent-danger);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .remove-btn:hover {
+            transform: rotate(90deg) scale(1.1);
+            background: #dc2626;
+        }
+
+        /* Chart Controls */
+        .chart-controls {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            flex-wrap: wrap;
+            padding: 20px;
+            background: var(--bg-tertiary);
+            border-radius: 16px;
+            margin: 24px 0;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            margin-top: 32px;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .chart-header h3 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-export {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 2px solid var(--border-color);
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: var(--transition);
+        }
+
+        .btn-export:hover {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+            transform: translateY(-2px);
+        }
+
+        .svg-wrapper {
+            overflow-x: auto;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            padding: 20px;
+            min-height: 600px;
+        }
+
+        /* Rules Panel */
+        .rules-panel {
+            background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: 16px;
+            padding: 24px;
+            height: fit-content;
+            position: sticky;
+            top: 24px;
+        }
+
+        .rules-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .rules-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .rule-item {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid var(--accent-primary);
+            box-shadow: var(--shadow-light);
+        }
+
+        .rule-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .rule-formula {
+            background: var(--bg-primary);
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            color: var(--accent-primary);
+            margin: 12px 0;
+            font-weight: 600;
+        }
+
+        .rule-description {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Legend */
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 28px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .legend-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .legend-group h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+
+        .legend-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes barFill {
+            from { width: 0; }
+            to { width: var(--final-width); }
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        /* Loading Animation */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .loading-content {
+            background: var(--bg-secondary);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            padding: 20px 28px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--accent-success);
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 1000;
+            max-width: 400px;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.error {
+            border-left-color: var(--accent-danger);
+        }
+
+        .toast.warning {
+            border-left-color: var(--accent-warning);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            
+            .header-content h1 {
+                font-size: 2rem;
+            }
+            
+            .chart-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .chart-header {
+                flex-direction: column;
+                gap: 20px;
+                align-items: stretch;
+            }
+            
+            .export-buttons {
+                justify-content: center;
+            }
+            
+            .legend {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 100;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            max-width: 300px;
+            -webkit-background-clip: padding-box;
+            background-clip: padding-box;
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+
+        /* Activity node animations */
+        .activity-node {
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .activity-node:hover {
+            transform: scale(1.05);
+            filter: brightness(1.1);
+        }
+
+        /* Critical path animation */
+        .critical-path {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        /* Status indicators */
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: var(--bg-tertiary);
+            margin-top: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-critical .status-dot {
+            background: var(--critical-color);
+        }
+
+        .status-float .status-dot {
+            background: var(--accent-warning);
+        }
+
+        .status-ok .status-dot {
+            background: var(--accent-success);
+        }
+
+        /* Progress indicators */
+        .progress-bar {
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-success));
+            border-radius: 3px;
+            width: 0%;
+            transition: width 1s ease-in-out;
+        }
+
+        /* Floating action button */
+        .fab {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-success));
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: var(--shadow);
+            z-index: 100;
+            transition: var(--transition);
+            animation: floatUp 0.5s ease-out 1s both;
+        }
+
+        .fab:hover {
+            transform: scale(1.1) rotate(180deg);
+            box-shadow: 0 15px 30px rgba(59, 130, 246, 0.4);
+        }
+
+        /* CSS classes for inline style replacements */
+        .input-80px {
+            width: 80px !important;
+        }
+
+        .legend-color-critical {
+            background: var(--critical-color) !important;
+        }
+
+        .legend-color-non-critical {
+            background: var(--non-critical) !important;
+        }
+
+        .legend-color-float-low {
+            background: var(--float-low) !important;
+        }
+
+        .legend-color-float-medium {
+            background: var(--float-medium) !important;
+        }
+
+        .legend-color-grid {
+            background: var(--grid-color) !important;
+        }
+
+        .legend-color-warning {
+            background: var(--accent-warning) !important;
+        }
+
+        .tips-box {
+            margin-top: 24px;
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+        }
+
+        .tips-box h4 {
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .tips-box ul {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            padding-left: 20px;
+        }
+
+        .loading-content h3 {
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .loading-content p {
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>Advanced CPM Gantt Chart Generator</h1>
+                <h2>Automatic Critical Path Method Calculations • Supervisor: Dr. Mohamed Mowafi</h2>
+            </div>
+            <button class="theme-toggle" id="themeToggle" title="Toggle dark/light mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+
+        <div class="main-grid">
+            <div>
+                <div class="card">
+                    <h2 class="card-title"><i class="fas fa-table"></i> Project Activities Table</h2>
+                    
+                    <div class="controls-container">
+                        <div class="btn-group">
+                            <button id="loadSample" class="btn btn-primary">
+                                <i class="fas fa-database"></i> Load Project Sample
+                            </button>
+                            <button id="addRow" class="btn btn-success">
+                                <i class="fas fa-plus"></i> Add Activity
+                            </button>
+                            <button id="calculateCPM" class="btn btn-primary">
+                                <i class="fas fa-calculator"></i> Calculate CPM
+                            </button>
+                            <button id="draw" class="btn btn-success">
+                                <i class="fas fa-chart-bar"></i> Generate Gantt Chart
+                            </button>
+                            <button id="clearAll" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Clear All
+                            </button>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressBar"></div>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>Activity</th>
+                                    <th>Duration</th>
+                                    <th>Predecessors</th>
+                                    <th>ES</th>
+                                    <th>EF</th>
+                                    <th>LS</th>
+                                    <th>LF</th>
+                                    <th>TF</th>
+                                    <th>FF</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <div class="chart-controls">
+                        <div class="control-group">
+                            <label for="minDay">Time Range:</label>
+                            <input id="minDay" type="number" class="input-field input-80px" value="0" placeholder="Min" title="Minimum day to display" />
+                            <span>to</span>
+                            <input id="maxDay" type="number" class="input-field input-80px" value="45" placeholder="Max" title="Maximum day to display" />
+                        </div>
+                        <div class="control-group">
+                            <label for="dayWidth">Scale:</label>
+                            <input id="dayWidth" type="number" class="input-field input-80px" value="18" min="10" max="40" title="Pixels per day in chart" />
+                            <span>px/day</span>
+                        </div>
+                        <div class="control-group">
+                            <label>
+                                <input id="showLabels" type="checkbox" checked />
+                                Show Timeline Labels
+                            </label>
+                        </div>
+                        <div class="control-group">
+                            <label>
+                                <input id="showCriticalPath" type="checkbox" checked />
+                                Highlight Critical Path
+                            </label>
+                        </div>
+                        <div class="control-group">
+                            <label>
+                                <input id="showPredecessors" type="checkbox" checked />
+                                Show Predecessors
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-project-diagram"></i> Project Gantt Chart (Bottom to Top)</h3>
+                        <div class="export-buttons">
+                            <button id="exportPNG" class="btn-export">
+                                <i class="fas fa-camera"></i> PNG
+                            </button>
+                            <button id="exportSVG" class="btn-export">
+                                <i class="fas fa-file-export"></i> SVG
+                            </button>
+                            <button id="exportPDF" class="btn-export">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="svg-wrapper" id="svgWrapper">
+                        <svg id="ganttChart" width="100%" height="600"></svg>
+                    </div>
+
+                    <div class="legend">
+                        <div class="legend-group">
+                            <h4>Activity Status</h4>
+                            <div class="legend-item">
+                                <div class="legend-color legend-color-critical"></div>
+                                <span class="legend-text">Critical Path (TF = 0)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color legend-color-non-critical"></div>
+                                <span class="legend-text">Non-Critical</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color legend-color-float-low"></div>
+                                <span class="legend-text">Low Float (TF ≤ 2)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color legend-color-float-medium"></div>
+                                <span class="legend-text">Medium Float (3-7)</span>
+                            </div>
+                        </div>
+                        
+                        <div class="legend-group">
+                            <h4>Chart Elements</h4>
+                            <div class="legend-item">
+                                <div class="legend-color legend-color-grid"></div>
+                                <span class="legend-text">Grid Lines</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color legend-color-warning"></div>
+                                <span class="legend-text">Float Area</span>
+                            </div>
+                        </div>
+                        
+                        <div class="legend-group">
+                            <h4>Calculation Results</h4>
+                            <div class="legend-item">
+                                <span class="legend-text">ES = Early Start</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-text">EF = Early Finish</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-text">LS = Late Start</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-text">LF = Late Finish</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-text">TF = Total Float</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-text">FF = Free Float</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rules Panel -->
+            <div class="rules-panel card">
+                <h3 class="rules-title"><i class="fas fa-book"></i> CPM Rules & Formulas</h3>
+                <div class="rules-list">
+                    <div class="rule-item">
+                        <div class="rule-title"><i class="fas fa-calculator"></i> Forward Pass Calculation</div>
+                        <div class="rule-formula">ES = Max(EF of all Predecessors)<br>EF = ES + Duration</div>
+                        <div class="rule-description">Start with initial activities (no predecessors): ES = 0. For subsequent activities, ES is the maximum EF of all its predecessors.</div>
+                    </div>
+                    
+                    <div class="rule-item">
+                        <div class="rule-title"><i class="fas fa-calculator"></i> Backward Pass Calculation</div>
+                        <div class="rule-formula">LF = Min(LS of all Successors)<br>LS = LF - Duration</div>
+                        <div class="rule-description">Start from project end: LF = Max(EF). For final activities, LF = Project Completion Time. Work backwards to calculate LS and LF.</div>
+                    </div>
+                    
+                    <div class="rule-item">
+                        <div class="rule-title"><i class="fas fa-ruler-combined"></i> Float Calculations</div>
+                        <div class="rule-formula">TF = LF - EF = LS - ES<br>FF = Min(ES of Successors) - EF</div>
+                        <div class="rule-description">Total Float (TF) is the maximum delay without affecting project completion. Free Float (FF) is the delay without affecting successor activities.</div>
+                    </div>
+                    
+                    <div class="rule-item">
+                        <div class="rule-title"><i class="fas fa-bullseye"></i> Critical Path Rules</div>
+                        <div class="rule-formula">Critical Path = Activities where TF = 0</div>
+                        <div class="rule-description">Activities on the critical path have zero total float. Any delay in these activities will delay the entire project completion.</div>
+                    </div>
+                    
+                    <div class="rule-item">
+                        <div class="rule-title"><i class="fas fa-sitemap"></i> Network Rules (A.O.N)</div>
+                        <div class="rule-formula">Activity-on-Node (A.O.N) Method</div>
+                        <div class="rule-description">Each activity is represented by a node. Arrows show dependencies. No looping or circular dependencies allowed in the network.</div>
+                    </div>
+                    
+                    <div class="rule-item">
+                        <div class="rule-title"><i class="fas fa-chart-bar"></i> Gantt Chart Rules</div>
+                        <div class="rule-formula">Bar spans from ES to EF<br>Float shown as extension</div>
+                        <div class="rule-description">Activities are shown as horizontal bars. Critical path activities are highlighted. Float is shown as lighter extension beyond EF.</div>
+                    </div>
+                </div>
+                
+                <div class="tips-box">
+                    <h4><i class="fas fa-lightbulb"></i> Usage Tips</h4>
+                    <ul>
+                        <li>Enter Activity ID or Name (can be any text, not just single letters)</li>
+                        <li>Enter Duration in days (numbers only)</li>
+                        <li>Enter Predecessors (comma-separated activity IDs/names)</li>
+                        <li>Click "Calculate CPM" to compute ES, EF, LS, LF, TF, FF automatically</li>
+                        <li>Critical Path activities are automatically highlighted</li>
+                        <li>Chart draws from BOTTOM to TOP for better readability</li>
+                        <li>Export charts as PNG, SVG, or PDF for reports</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h3>Calculating CPM...</h3>
+            <p>Performing forward and backward pass calculations</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <!-- Floating Action Button -->
+    <button class="fab" id="fabTop" title="Scroll to top">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <script>
+        // Initialize state
+        let chartData = [];
+        let isDarkMode = false;
+        let networkGraph = {};
+
+        // Get current theme colors
+        function getThemeColors() {
+            const root = document.documentElement;
+            const styles = getComputedStyle(root);
+            
+            return {
+                bgSecondary: isDarkMode ? '#1e293b' : '#ffffff',
+                criticalColor: isDarkMode ? '#f87171' : '#dc2626',
+                nonCritical: isDarkMode ? '#60a5fa' : '#3b82f6',
+                floatLow: isDarkMode ? '#34d399' : '#10b981',
+                floatMedium: isDarkMode ? '#fbbf24' : '#f59e0b',
+                floatHigh: isDarkMode ? '#a78bfa' : '#8b5cf6',
+                accentPrimary: isDarkMode ? '#60a5fa' : '#3b82f6',
+                gridColor: isDarkMode ? '#475569' : '#e2e8f0',
+                textPrimary: isDarkMode ? '#f1f5f9' : '#1e293b',
+                textSecondary: isDarkMode ? '#cbd5e1' : '#64748b',
+                borderColor: isDarkMode ? '#475569' : '#e2e8f0'
+            };
+        }
+
+        // CPM Calculation Functions
+        class CPMCalculator {
+            constructor(activities) {
+                this.activities = activities;
+                this.sortedActivities = [];
+                this.projectCompletionTime = 0;
+            }
+
+            // Build network graph from activities
+            buildNetwork() {
+                const graph = {};
+                
+                // Initialize graph nodes
+                this.activities.forEach(act => {
+                    graph[act.activity] = {
+                        ...act,
+                        predecessors: act.pred || [],
+                        successors: [],
+                        ES: 0,
+                        EF: 0,
+                        LS: Infinity,
+                        LF: Infinity,
+                        TF: 0,
+                        FF: 0,
+                        isCritical: false
+                    };
+                });
+
+                // Build successor relationships
+                this.activities.forEach(act => {
+                    act.pred.forEach(pred => {
+                        if (graph[pred]) {
+                            graph[pred].successors.push(act.activity);
+                        }
+                    });
+                });
+
+                return graph;
+            }
+
+            // Topological sort for forward pass
+            topologicalSort(graph) {
+                const visited = new Set();
+                const stack = [];
+
+                const visit = (node) => {
+                    if (visited.has(node)) return;
+                    visited.add(node);
+                    
+                    graph[node].successors.forEach(successor => {
+                        visit(successor);
+                    });
+                    
+                    stack.push(node);
+                };
+
+                // Find activities with no predecessors
+                const startNodes = Object.keys(graph).filter(node => 
+                    graph[node].predecessors.length === 0
+                );
+
+                startNodes.forEach(node => visit(node));
+                return stack.reverse();
+            }
+
+            // Forward pass calculation
+            forwardPass(graph, order) {
+                order.forEach(node => {
+                    const activity = graph[node];
+                    
+                    if (activity.predecessors.length === 0) {
+                        activity.ES = 0;
+                    } else {
+                        activity.ES = Math.max(...activity.predecessors.map(p => graph[p].EF));
+                    }
+                    
+                    activity.EF = activity.ES + activity.duration;
+                    this.projectCompletionTime = Math.max(this.projectCompletionTime, activity.EF);
+                });
+            }
+
+            // Backward pass calculation
+            backwardPass(graph, order) {
+                // Initialize LF for activities with no successors
+                order.forEach(node => {
+                    const activity = graph[node];
+                    if (activity.successors.length === 0) {
+                        activity.LF = this.projectCompletionTime;
+                    }
+                });
+
+                // Process in reverse order
+                [...order].reverse().forEach(node => {
+                    const activity = graph[node];
+                    
+                    if (activity.successors.length > 0) {
+                        activity.LF = Math.min(...activity.successors.map(s => graph[s].LS));
+                    }
+                    
+                    activity.LS = activity.LF - activity.duration;
+                });
+            }
+
+            // Calculate floats
+            calculateFloats(graph) {
+                Object.keys(graph).forEach(node => {
+                    const activity = graph[node];
+                    
+                    // Total Float
+                    activity.TF = activity.LF - activity.EF;
+                    
+                    // Free Float
+                    if (activity.successors.length > 0) {
+                        const minSuccessorES = Math.min(...activity.successors.map(s => graph[s].ES));
+                        activity.FF = minSuccessorES - activity.EF;
+                    } else {
+                        activity.FF = this.projectCompletionTime - activity.EF;
+                    }
+                    
+                    activity.FF = Math.max(0, activity.FF);
+                    
+                    // Critical path identification
+                    activity.isCritical = activity.TF === 0;
+                });
+            }
+
+            // Main calculation method
+            calculate() {
+                const graph = this.buildNetwork();
+                const order = this.topologicalSort(graph);
+                
+                this.forwardPass(graph, order);
+                this.backwardPass(graph, order);
+                this.calculateFloats(graph);
+                
+                // Convert graph back to array
+                const results = Object.values(graph).map(act => ({
+                    activity: act.activity,
+                    duration: act.duration,
+                    pred: act.predecessors,
+                    ES: act.ES,
+                    EF: act.EF,
+                    LS: act.LS,
+                    LF: act.LF,
+                    TF: act.TF,
+                    FF: act.FF,
+                    isCritical: act.isCritical
+                }));
+                
+                // Sort by ES for display
+                results.sort((a, b) => a.ES - b.ES || a.activity.localeCompare(b.activity));
+                
+                return {
+                    activities: results,
+                    projectCompletionTime: this.projectCompletionTime,
+                    criticalPath: results.filter(a => a.isCritical).map(a => a.activity),
+                    network: graph
+                };
+            }
+        }
+
+        // Toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Tooltip functions
+        function showTooltip(content, x, y) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.innerHTML = content;
+            tooltip.style.left = `${x + 15}px`;
+            tooltip.style.top = `${y + 15}px`;
+            tooltip.style.opacity = '1';
+        }
+
+        function hideTooltip() {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.style.opacity = '0';
+        }
+
+        // Create a new row
+        function createRow(activity = '', duration = '', pred = '') {
+            const tbody = document.querySelector('#dataTable tbody');
+            const tr = document.createElement('tr');
+            
+            tr.innerHTML = `
+                <td><input type="text" class="input-field activity-input" value="${activity}" placeholder="e.g., Site Preparation" maxlength="50" /></td>
+                <td><input type="number" class="input-field duration-input" value="${duration}" min="1" placeholder="Days" /></td>
+                <td><input type="text" class="input-field pred-input" value="${pred}" placeholder="e.g., A,B (comma separated)" /></td>
+                <td class="calculated-cell es-cell"></td>
+                <td class="calculated-cell ef-cell"></td>
+                <td class="calculated-cell ls-cell"></td>
+                <td class="calculated-cell lf-cell"></td>
+                <td class="calculated-cell tf-cell"></td>
+                <td class="calculated-cell ff-cell"></td>
+                <td><button class="remove-btn"><i class="fas fa-times"></i></button></td>
+            `;
+            
+            tbody.appendChild(tr);
+            
+            // Add remove button animation
+            const removeBtn = tr.querySelector('.remove-btn');
+            removeBtn.addEventListener('click', () => {
+                tr.style.transform = 'translateX(100%)';
+                tr.style.opacity = '0';
+                setTimeout(() => {
+                    tr.remove();
+                    showToast('Activity removed', 'warning');
+                }, 300);
+            });
+            
+            return tr;
+        }
+
+        // Sample data from Project 2 (with descriptive names)
+        const sampleData = [
+            ['Site Preparation', 10, ''],
+            ['Foundation Work', 8, ''],
+            ['Structural Steel', 7, 'Site Preparation'],
+            ['Concrete Pouring', 15, 'Foundation Work'],
+            ['Electrical Rough-in', 6, 'Foundation Work'],
+            ['Mechanical Installation', 12, 'Structural Steel'],
+            ['Drywall Installation', 8, 'Concrete Pouring,Mechanical Installation'],
+            ['Plumbing Work', 11, 'Electrical Rough-in,Mechanical Installation'],
+            ['Interior Finishing', 4, 'Concrete Pouring,Mechanical Installation'],
+            ['Exterior Cladding', 7, 'Interior Finishing,Plumbing Work,Drywall Installation'],
+            ['Painting', 2, 'Interior Finishing'],
+            ['Final Inspection', 5, 'Plumbing Work,Drywall Installation,Painting']
+        ];
+
+        // Calculate CPM and update table
+        function calculateCPM() {
+            const loading = document.getElementById('loadingOverlay');
+            const progressBar = document.getElementById('progressBar');
+            
+            loading.classList.add('active');
+            progressBar.style.width = '0%';
+            
+            setTimeout(() => {
+                const rows = Array.from(document.querySelectorAll('#dataTable tbody tr'));
+                if (rows.length === 0) {
+                    showToast('Please add activities first', 'error');
+                    loading.classList.remove('active');
+                    return;
+                }
+
+                // Collect activity data
+                const activities = rows.map(tr => {
+                    const activity = tr.querySelector('.activity-input').value.trim();
+                    const duration = parseInt(tr.querySelector('.duration-input').value) || 0;
+                    const pred = (tr.querySelector('.pred-input').value || '')
+                        .split(',')
+                        .map(p => p.trim())
+                        .filter(p => p !== '');
+                    
+                    return { activity, duration, pred };
+                }).filter(a => a.activity && a.duration > 0);
+
+                if (activities.length === 0) {
+                    showToast('Please enter valid activity data', 'error');
+                    loading.classList.remove('active');
+                    return;
+                }
+
+                // Check for duplicate activities
+                const activitySet = new Set();
+                const duplicates = [];
+                activities.forEach(a => {
+                    if (activitySet.has(a.activity)) {
+                        duplicates.push(a.activity);
+                    }
+                    activitySet.add(a.activity);
+                });
+
+                if (duplicates.length > 0) {
+                    showToast(`Duplicate activities found: ${duplicates.join(', ')}`, 'error');
+                    loading.classList.remove('active');
+                    return;
+                }
+
+                // Perform CPM calculation
+                const calculator = new CPMCalculator(activities);
+                const result = calculator.calculate();
+                
+                // Update table with calculated values
+                rows.forEach((tr, index) => {
+                    const activity = activities[index];
+                    if (!activity) return;
+                    
+                    const calculated = result.activities.find(a => a.activity === activity.activity);
+                    if (calculated) {
+                        tr.querySelector('.es-cell').textContent = calculated.ES;
+                        tr.querySelector('.ef-cell').textContent = calculated.EF;
+                        tr.querySelector('.ls-cell').textContent = calculated.LS;
+                        tr.querySelector('.lf-cell').textContent = calculated.LF;
+                        tr.querySelector('.tf-cell').textContent = calculated.TF;
+                        tr.querySelector('.ff-cell').textContent = calculated.FF;
+                        
+                        // Highlight critical activities
+                        if (calculated.isCritical) {
+                            tr.querySelector('.tf-cell').classList.add('critical-cell');
+                            tr.querySelector('.es-cell').classList.add('critical-cell');
+                            tr.querySelector('.ef-cell').classList.add('critical-cell');
+                        }
+                    }
+                });
+
+                // Update progress bar
+                progressBar.style.width = '100%';
+                
+                setTimeout(() => {
+                    loading.classList.remove('active');
+                    showToast(`CPM calculation complete! Critical Path: ${result.criticalPath.join(' → ')}`);
+                    
+                    // Store network for visualization
+                    networkGraph = result.network;
+                    
+                    // Update max day input
+                    document.getElementById('maxDay').value = Math.max(result.projectCompletionTime + 5, 45);
+                }, 500);
+                
+            }, 300);
+        }
+
+        // Draw Gantt Chart from BOTTOM to TOP
+        function drawGanttChart() {
+            if (!networkGraph || Object.keys(networkGraph).length === 0) {
+                showToast('Please calculate CPM first', 'warning');
+                return;
+            }
+
+            const svg = document.getElementById('ganttChart');
+            svg.innerHTML = '';
+
+            const minDay = parseInt(document.getElementById('minDay').value) || 0;
+            const maxDay = parseInt(document.getElementById('maxDay').value) || 45;
+            const dayWidth = parseInt(document.getElementById('dayWidth').value) || 18;
+            const showLabels = document.getElementById('showLabels').checked;
+            const showCriticalPath = document.getElementById('showCriticalPath').checked;
+            const showPredecessors = document.getElementById('showPredecessors').checked;
+
+            // Get current theme colors
+            const colors = getThemeColors();
+
+            // Convert activities to array and sort for display
+            const activities = Object.values(networkGraph)
+                .sort((a, b) => b.ES - a.ES); // Sort by ES descending for bottom-to-top display
+
+            // SVG dimensions - increased left padding for longer activity names
+            const rowHeight = 55; // Slightly taller for longer names
+            const paddingLeft = 250; // Increased for longer activity names
+            const paddingTop = 80;
+            const paddingBottom = 60;
+            const chartWidth = paddingLeft + (maxDay - minDay) * dayWidth + 100;
+            const chartHeight = paddingTop + activities.length * rowHeight + paddingBottom;
+
+            svg.setAttribute('viewBox', `0 0 ${chartWidth} ${chartHeight}`);
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', Math.max(600, chartHeight));
+
+            // Background - use absolute color for export compatibility
+            const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            bg.setAttribute('x', '0');
+            bg.setAttribute('y', '0');
+            bg.setAttribute('width', chartWidth);
+            bg.setAttribute('height', chartHeight);
+            bg.setAttribute('fill', colors.bgSecondary);
+            svg.appendChild(bg);
+
+            // Title
+            const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            title.setAttribute('x', chartWidth / 2);
+            title.setAttribute('y', 40);
+            title.setAttribute('text-anchor', 'middle');
+            title.setAttribute('font-size', '22');
+            title.setAttribute('font-weight', '700');
+            title.setAttribute('fill', colors.textPrimary);
+            title.textContent = 'Project Gantt Chart (Critical Path Method)';
+            svg.appendChild(title);
+
+            // Draw day grid and labels
+            for (let day = minDay; day <= maxDay; day++) {
+                const x = paddingLeft + (day - minDay) * dayWidth;
+                
+                // Grid line - use absolute color
+                const gridLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                gridLine.setAttribute('x1', x);
+                gridLine.setAttribute('y1', paddingTop - 30);
+                gridLine.setAttribute('x2', x);
+                gridLine.setAttribute('y2', chartHeight - paddingBottom + 10);
+                gridLine.setAttribute('stroke', colors.gridColor);
+                gridLine.setAttribute('stroke-width', '1');
+                gridLine.setAttribute('opacity', '0.6');
+                svg.appendChild(gridLine);
+
+                // Day labels (every 5 days) - use absolute color
+                if (day % 5 === 0 || day === minDay || day === maxDay) {
+                    const dayLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    dayLabel.setAttribute('x', x);
+                    dayLabel.setAttribute('y', paddingTop - 10);
+                    dayLabel.setAttribute('text-anchor', 'middle');
+                    dayLabel.setAttribute('font-size', '12');
+                    dayLabel.setAttribute('font-weight', '600');
+                    dayLabel.setAttribute('fill', colors.textSecondary);
+                    dayLabel.textContent = `Day ${day}`;
+                    svg.appendChild(dayLabel);
+                }
+            }
+
+            // Draw activity bars from BOTTOM to TOP
+            activities.forEach((activity, index) => {
+                const rowY = paddingTop + index * rowHeight;
+                
+                // Activity label (right-aligned) - use absolute color
+                // Allow long activity names - use smaller font if name is long
+                const activityName = activity.activity;
+                let fontSize = activityName.length > 20 ? '11px' : '13px';
+                let fontWeight = '600';
+                
+                // Split long activity names into two lines if needed
+                let displayName = activityName;
+                let secondLine = null;
+                
+                if (activityName.length > 30) {
+                    // Try to split at natural break points
+                    const words = activityName.split(' ');
+                    let line1 = '';
+                    let line2 = '';
+                    let midPoint = Math.floor(words.length / 2);
+                    
+                    for (let i = 0; i < words.length; i++) {
+                        if (i < midPoint) {
+                            line1 += words[i] + ' ';
+                        } else {
+                            line2 += words[i] + ' ';
+                        }
+                    }
+                    
+                    displayName = line1.trim();
+                    secondLine = line2.trim();
+                    fontSize = '10px'; // Smaller font for two lines
+                }
+                
+                const activityLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                activityLabel.setAttribute('x', paddingLeft - 10);
+                activityLabel.setAttribute('y', rowY + rowHeight / 2);
+                activityLabel.setAttribute('text-anchor', 'end');
+                activityLabel.setAttribute('font-size', fontSize);
+                activityLabel.setAttribute('font-weight', fontWeight);
+                activityLabel.setAttribute('fill', colors.textPrimary);
+                activityLabel.textContent = displayName;
+                activityLabel.setAttribute('class', 'activity-node');
+                svg.appendChild(activityLabel);
+                
+                // Second line for long activity names
+                if (secondLine) {
+                    const activityLabel2 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    activityLabel2.setAttribute('x', paddingLeft - 10);
+                    activityLabel2.setAttribute('y', rowY + rowHeight / 2 + 14);
+                    activityLabel2.setAttribute('text-anchor', 'end');
+                    activityLabel2.setAttribute('font-size', fontSize);
+                    activityLabel2.setAttribute('font-weight', fontWeight);
+                    activityLabel2.setAttribute('fill', colors.textPrimary);
+                    activityLabel2.textContent = secondLine;
+                    activityLabel2.setAttribute('class', 'activity-node');
+                    svg.appendChild(activityLabel2);
+                }
+
+                // Predecessors label (optional)
+                if (showPredecessors && activity.predecessors.length > 0) {
+                    const predLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    predLabel.setAttribute('x', paddingLeft - 10);
+                    predLabel.setAttribute('y', rowY + rowHeight / 2 + (secondLine ? 28 : 15));
+                    predLabel.setAttribute('text-anchor', 'end');
+                    predLabel.setAttribute('font-size', '10');
+                    predLabel.setAttribute('fill', colors.textSecondary);
+                    predLabel.textContent = `← ${activity.predecessors.join(', ')}`;
+                    svg.appendChild(predLabel);
+                }
+
+                // Bar position
+                const barX = paddingLeft + (activity.ES - minDay) * dayWidth;
+                const barWidth = (activity.EF - activity.ES) * dayWidth;
+                const barHeight = 32; // Slightly taller for better visibility
+
+                // Float area (if any) - use absolute color
+                if (activity.TF > 0) {
+                    const floatWidth = activity.TF * dayWidth;
+                    const floatRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    floatRect.setAttribute('x', barX + barWidth);
+                    floatRect.setAttribute('y', rowY + 12);
+                    floatRect.setAttribute('width', floatWidth);
+                    floatRect.setAttribute('height', barHeight);
+                    floatRect.setAttribute('fill', colors.floatMedium);
+                    floatRect.setAttribute('opacity', '0.3');
+                    floatRect.setAttribute('rx', '4');
+                    floatRect.setAttribute('ry', '4');
+                    svg.appendChild(floatRect);
+                }
+
+                // Main activity bar - use absolute colors
+                const barRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                barRect.setAttribute('x', barX);
+                barRect.setAttribute('y', rowY + 12);
+                barRect.setAttribute('width', barWidth);
+                barRect.setAttribute('height', barHeight);
+                barRect.setAttribute('rx', '6');
+                barRect.setAttribute('ry', '6');
+                
+                // Color based on critical path and float - use absolute colors
+                let barColor = colors.nonCritical;
+                if (showCriticalPath && activity.isCritical) {
+                    barColor = colors.criticalColor;
+                } else if (activity.TF === 0) {
+                    barColor = colors.criticalColor;
+                } else if (activity.TF <= 2) {
+                    barColor = colors.floatLow;
+                } else if (activity.TF <= 7) {
+                    barColor = colors.floatMedium;
+                } else {
+                    barColor = colors.floatHigh;
+                }
+                
+                barRect.setAttribute('fill', barColor);
+                barRect.setAttribute('class', 'activity-node');
+                if (showCriticalPath && activity.isCritical) {
+                    barRect.setAttribute('class', 'activity-node critical-path');
+                }
+                svg.appendChild(barRect);
+
+                // Bar label (activity name or abbreviation inside bar) - use absolute white for contrast
+                // Only show label if bar is wide enough
+                if (barWidth > 40) {
+                    // Use abbreviation or short name for inside bar
+                    let barLabelText = activity.activity;
+                    if (barLabelText.length > 15) {
+                        // Create abbreviation: take first letter of each word
+                        const words = barLabelText.split(' ');
+                        if (words.length > 1) {
+                            barLabelText = words.map(w => w.charAt(0).toUpperCase()).join('');
+                        } else if (barLabelText.length > 10) {
+                            barLabelText = barLabelText.substring(0, 8) + '...';
+                        }
+                    }
+                    
+                    if (barWidth > barLabelText.length * 8) { // Enough space for text
+                        const barLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        barLabel.setAttribute('x', barX + barWidth / 2);
+                        barLabel.setAttribute('y', rowY + 12 + barHeight / 2 + 5);
+                        barLabel.setAttribute('text-anchor', 'middle');
+                        barLabel.setAttribute('font-size', '11');
+                        barLabel.setAttribute('font-weight', '600');
+                        barLabel.setAttribute('fill', '#ffffff'); // Always white for contrast
+                        barLabel.textContent = barLabelText;
+                        svg.appendChild(barLabel);
+                    }
+                }
+
+                // ES/EF labels - use absolute colors
+                if (showLabels) {
+                    const esLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    esLabel.setAttribute('x', barX - 5);
+                    esLabel.setAttribute('y', rowY + 10);
+                    esLabel.setAttribute('text-anchor', 'end');
+                    esLabel.setAttribute('font-size', '10');
+                    esLabel.setAttribute('font-weight', '600');
+                    esLabel.setAttribute('fill', colors.textSecondary);
+                    esLabel.textContent = activity.ES;
+                    svg.appendChild(esLabel);
+
+                    const efLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    efLabel.setAttribute('x', barX + barWidth + 5);
+                    efLabel.setAttribute('y', rowY + 10);
+                    efLabel.setAttribute('text-anchor', 'start');
+                    efLabel.setAttribute('font-size', '10');
+                    efLabel.setAttribute('font-weight', '600');
+                    efLabel.setAttribute('fill', colors.textSecondary);
+                    efLabel.textContent = activity.EF;
+                    svg.appendChild(efLabel);
+                }
+
+                // Add interactivity
+                [barRect, activityLabel].forEach(element => {
+                    element.addEventListener('mouseenter', (e) => {
+                        const tooltipContent = `
+                            <strong>${activity.activity}</strong><br>
+                            Duration: ${activity.duration} days<br>
+                            ES: ${activity.ES}, EF: ${activity.EF}<br>
+                            LS: ${activity.LS}, LF: ${activity.LF}<br>
+                            Total Float: ${activity.TF}, Free Float: ${activity.FF}<br>
+                            ${activity.isCritical ? '<strong style="color: #dc2626;">CRITICAL PATH</strong>' : 'Non-critical'}<br>
+                            Predecessors: ${activity.predecessors.length ? activity.predecessors.join(', ') : 'None'}<br>
+                            Successors: ${activity.successors.length ? activity.successors.join(', ') : 'None'}
+                        `;
+                        const rect = e.target.getBoundingClientRect();
+                        showTooltip(tooltipContent, rect.left, rect.top);
+                    });
+                    
+                    element.addEventListener('mouseleave', hideTooltip);
+                });
+            });
+
+            showToast('Gantt chart generated successfully!');
+        }
+
+        // Create SVG clone for export (with absolute colors)
+        function createExportSVG() {
+            if (!networkGraph || Object.keys(networkGraph).length === 0) return null;
+
+            const minDay = parseInt(document.getElementById('minDay').value) || 0;
+            const maxDay = parseInt(document.getElementById('maxDay').value) || 45;
+            const dayWidth = parseInt(document.getElementById('dayWidth').value) || 18;
+            const showLabels = document.getElementById('showLabels').checked;
+            const showCriticalPath = document.getElementById('showCriticalPath').checked;
+            const showPredecessors = document.getElementById('showPredecessors').checked;
+
+            // Always use light mode colors for export
+            const exportColors = {
+                bgSecondary: '#ffffff',
+                criticalColor: '#dc2626',
+                nonCritical: '#3b82f6',
+                floatLow: '#10b981',
+                floatMedium: '#f59e0b',
+                floatHigh: '#8b5cf6',
+                accentPrimary: '#3b82f6',
+                gridColor: '#e2e8f0',
+                textPrimary: '#1e293b',
+                textSecondary: '#64748b',
+                borderColor: '#e2e8f0'
+            };
+
+            // Convert activities to array and sort for display
+            const activities = Object.values(networkGraph)
+                .sort((a, b) => b.ES - a.ES); // Sort by ES descending for bottom-to-top display
+
+            // SVG dimensions - increased left padding for longer activity names
+            const rowHeight = 55;
+            const paddingLeft = 250;
+            const paddingTop = 80;
+            const paddingBottom = 60;
+            const chartWidth = paddingLeft + (maxDay - minDay) * dayWidth + 100;
+            const chartHeight = paddingTop + activities.length * rowHeight + paddingBottom;
+
+            // Create SVG element
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            svg.setAttribute('viewBox', `0 0 ${chartWidth} ${chartHeight}`);
+            svg.setAttribute('width', chartWidth);
+            svg.setAttribute('height', chartHeight);
+
+            // Background - use absolute color for export
+            const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            bg.setAttribute('x', '0');
+            bg.setAttribute('y', '0');
+            bg.setAttribute('width', chartWidth);
+            bg.setAttribute('height', chartHeight);
+            bg.setAttribute('fill', exportColors.bgSecondary);
+            svg.appendChild(bg);
+
+            // Title
+            const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            title.setAttribute('x', chartWidth / 2);
+            title.setAttribute('y', 40);
+            title.setAttribute('text-anchor', 'middle');
+            title.setAttribute('font-size', '22');
+            title.setAttribute('font-weight', '700');
+            title.setAttribute('fill', exportColors.textPrimary);
+            title.textContent = 'Project Gantt Chart (Critical Path Method)';
+            svg.appendChild(title);
+
+            // Draw day grid and labels
+            for (let day = minDay; day <= maxDay; day++) {
+                const x = paddingLeft + (day - minDay) * dayWidth;
+                
+                // Grid line
+                const gridLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                gridLine.setAttribute('x1', x);
+                gridLine.setAttribute('y1', paddingTop - 30);
+                gridLine.setAttribute('x2', x);
+                gridLine.setAttribute('y2', chartHeight - paddingBottom + 10);
+                gridLine.setAttribute('stroke', exportColors.gridColor);
+                gridLine.setAttribute('stroke-width', '1');
+                gridLine.setAttribute('opacity', '0.6');
+                svg.appendChild(gridLine);
+
+                // Day labels (every 5 days)
+                if (day % 5 === 0 || day === minDay || day === maxDay) {
+                    const dayLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    dayLabel.setAttribute('x', x);
+                    dayLabel.setAttribute('y', paddingTop - 10);
+                    dayLabel.setAttribute('text-anchor', 'middle');
+                    dayLabel.setAttribute('font-size', '12');
+                    dayLabel.setAttribute('font-weight', '600');
+                    dayLabel.setAttribute('fill', exportColors.textSecondary);
+                    dayLabel.textContent = `Day ${day}`;
+                    svg.appendChild(dayLabel);
+                }
+            }
+
+            // Draw activity bars from BOTTOM to TOP
+            activities.forEach((activity, index) => {
+                const rowY = paddingTop + index * rowHeight;
+                
+                // Activity label (right-aligned)
+                const activityName = activity.activity;
+                let fontSize = activityName.length > 20 ? '11px' : '13px';
+                let fontWeight = '600';
+                
+                // Split long activity names into two lines if needed
+                let displayName = activityName;
+                let secondLine = null;
+                
+                if (activityName.length > 30) {
+                    const words = activityName.split(' ');
+                    let line1 = '';
+                    let line2 = '';
+                    let midPoint = Math.floor(words.length / 2);
+                    
+                    for (let i = 0; i < words.length; i++) {
+                        if (i < midPoint) {
+                            line1 += words[i] + ' ';
+                        } else {
+                            line2 += words[i] + ' ';
+                        }
+                    }
+                    
+                    displayName = line1.trim();
+                    secondLine = line2.trim();
+                    fontSize = '10px';
+                }
+                
+                const activityLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                activityLabel.setAttribute('x', paddingLeft - 10);
+                activityLabel.setAttribute('y', rowY + rowHeight / 2);
+                activityLabel.setAttribute('text-anchor', 'end');
+                activityLabel.setAttribute('font-size', fontSize);
+                activityLabel.setAttribute('font-weight', fontWeight);
+                activityLabel.setAttribute('fill', exportColors.textPrimary);
+                activityLabel.textContent = displayName;
+                svg.appendChild(activityLabel);
+                
+                // Second line for long activity names
+                if (secondLine) {
+                    const activityLabel2 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    activityLabel2.setAttribute('x', paddingLeft - 10);
+                    activityLabel2.setAttribute('y', rowY + rowHeight / 2 + 14);
+                    activityLabel2.setAttribute('text-anchor', 'end');
+                    activityLabel2.setAttribute('font-size', fontSize);
+                    activityLabel2.setAttribute('font-weight', fontWeight);
+                    activityLabel2.setAttribute('fill', exportColors.textPrimary);
+                    activityLabel2.textContent = secondLine;
+                    svg.appendChild(activityLabel2);
+                }
+
+                // Predecessors label (optional)
+                if (showPredecessors && activity.predecessors.length > 0) {
+                    const predLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    predLabel.setAttribute('x', paddingLeft - 10);
+                    predLabel.setAttribute('y', rowY + rowHeight / 2 + (secondLine ? 28 : 15));
+                    predLabel.setAttribute('text-anchor', 'end');
+                    predLabel.setAttribute('font-size', '10');
+                    predLabel.setAttribute('fill', exportColors.textSecondary);
+                    predLabel.textContent = `← ${activity.predecessors.join(', ')}`;
+                    svg.appendChild(predLabel);
+                }
+
+                // Bar position
+                const barX = paddingLeft + (activity.ES - minDay) * dayWidth;
+                const barWidth = (activity.EF - activity.ES) * dayWidth;
+                const barHeight = 32;
+
+                // Float area (if any)
+                if (activity.TF > 0) {
+                    const floatWidth = activity.TF * dayWidth;
+                    const floatRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    floatRect.setAttribute('x', barX + barWidth);
+                    floatRect.setAttribute('y', rowY + 12);
+                    floatRect.setAttribute('width', floatWidth);
+                    floatRect.setAttribute('height', barHeight);
+                    floatRect.setAttribute('fill', exportColors.floatMedium);
+                    floatRect.setAttribute('opacity', '0.3');
+                    floatRect.setAttribute('rx', '4');
+                    floatRect.setAttribute('ry', '4');
+                    svg.appendChild(floatRect);
+                }
+
+                // Main activity bar
+                const barRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                barRect.setAttribute('x', barX);
+                barRect.setAttribute('y', rowY + 12);
+                barRect.setAttribute('width', barWidth);
+                barRect.setAttribute('height', barHeight);
+                barRect.setAttribute('rx', '6');
+                barRect.setAttribute('ry', '6');
+                
+                // Color based on critical path and float
+                let barColor = exportColors.nonCritical;
+                if (showCriticalPath && activity.isCritical) {
+                    barColor = exportColors.criticalColor;
+                } else if (activity.TF === 0) {
+                    barColor = exportColors.criticalColor;
+                } else if (activity.TF <= 2) {
+                    barColor = exportColors.floatLow;
+                } else if (activity.TF <= 7) {
+                    barColor = exportColors.floatMedium;
+                } else {
+                    barColor = exportColors.floatHigh;
+                }
+                
+                barRect.setAttribute('fill', barColor);
+                svg.appendChild(barRect);
+
+                // Bar label (activity name or abbreviation inside bar)
+                if (barWidth > 40) {
+                    let barLabelText = activity.activity;
+                    if (barLabelText.length > 15) {
+                        const words = barLabelText.split(' ');
+                        if (words.length > 1) {
+                            barLabelText = words.map(w => w.charAt(0).toUpperCase()).join('');
+                        } else if (barLabelText.length > 10) {
+                            barLabelText = barLabelText.substring(0, 8) + '...';
+                        }
+                    }
+                    
+                    if (barWidth > barLabelText.length * 8) {
+                        const barLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        barLabel.setAttribute('x', barX + barWidth / 2);
+                        barLabel.setAttribute('y', rowY + 12 + barHeight / 2 + 5);
+                        barLabel.setAttribute('text-anchor', 'middle');
+                        barLabel.setAttribute('font-size', '11');
+                        barLabel.setAttribute('font-weight', '600');
+                        barLabel.setAttribute('fill', '#ffffff');
+                        barLabel.textContent = barLabelText;
+                        svg.appendChild(barLabel);
+                    }
+                }
+
+                // ES/EF labels
+                if (showLabels) {
+                    const esLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    esLabel.setAttribute('x', barX - 5);
+                    esLabel.setAttribute('y', rowY + 10);
+                    esLabel.setAttribute('text-anchor', 'end');
+                    esLabel.setAttribute('font-size', '10');
+                    esLabel.setAttribute('font-weight', '600');
+                    esLabel.setAttribute('fill', exportColors.textSecondary);
+                    esLabel.textContent = activity.ES;
+                    svg.appendChild(esLabel);
+
+                    const efLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    efLabel.setAttribute('x', barX + barWidth + 5);
+                    efLabel.setAttribute('y', rowY + 10);
+                    efLabel.setAttribute('text-anchor', 'start');
+                    efLabel.setAttribute('font-size', '10');
+                    efLabel.setAttribute('font-weight', '600');
+                    efLabel.setAttribute('fill', exportColors.textSecondary);
+                    efLabel.textContent = activity.EF;
+                    svg.appendChild(efLabel);
+                }
+            });
+
+            return svg;
+        }
+
+        // Theme toggle
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('dark-mode', isDarkMode);
+            
+            const icon = document.getElementById('themeToggle').querySelector('i');
+            icon.className = isDarkMode ? 'fas fa-sun' : 'fas fa-moon';
+            
+            showToast(isDarkMode ? 'Dark mode activated' : 'Light mode activated');
+            
+            // Redraw chart with new theme colors
+            if (Object.keys(networkGraph).length > 0) {
+                drawGanttChart();
+            }
+        });
+
+        // Event Listeners
+        document.getElementById('loadSample').addEventListener('click', () => {
+            const tbody = document.querySelector('#dataTable tbody');
+            tbody.innerHTML = '';
+            
+            sampleData.forEach((row, index) => {
+                setTimeout(() => {
+                    createRow(...row);
+                    if (index === sampleData.length - 1) {
+                        showToast('Sample Project 2 loaded successfully!');
+                    }
+                }, index * 100);
+            });
+        });
+
+        document.getElementById('addRow').addEventListener('click', () => {
+            const row = createRow();
+            row.style.animation = 'floatUp 0.5s ease-out';
+            showToast('New activity row added');
+        });
+
+        document.getElementById('calculateCPM').addEventListener('click', calculateCPM);
+
+        document.getElementById('draw').addEventListener('click', () => {
+            calculateCPM();
+            setTimeout(drawGanttChart, 800);
+        });
+
+        document.getElementById('clearAll').addEventListener('click', () => {
+            const tbody = document.querySelector('#dataTable tbody');
+            const rows = Array.from(tbody.children);
+            
+            rows.forEach((row, index) => {
+                setTimeout(() => {
+                    row.style.transform = 'translateX(-100%)';
+                    row.style.opacity = '0';
+                }, index * 50);
+            });
+            
+            setTimeout(() => {
+                tbody.innerHTML = '';
+                showToast('All activities cleared', 'warning');
+                networkGraph = {};
+            }, rows.length * 50 + 300);
+        });
+
+        // Export functions - FIXED VERSION
+        document.getElementById('exportPNG').addEventListener('click', async () => {
+            if (!networkGraph || Object.keys(networkGraph).length === 0) {
+                showToast('Please generate a chart first', 'warning');
+                return;
+            }
+
+            const loading = document.getElementById('loadingOverlay');
+            loading.classList.add('active');
+
+            // Create a clean SVG for export (uses absolute colors)
+            const exportSVG = createExportSVG();
+            
+            if (!exportSVG) {
+                loading.classList.remove('active');
+                return;
+            }
+
+            // Serialize SVG to string
+            const serializer = new XMLSerializer();
+            let svgString = serializer.serializeToString(exportSVG);
+            
+            // Ensure proper XML namespace
+            if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
+                svgString = svgString.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+            }
+            
+            // Create canvas for rendering
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Create image element
+            const img = new Image();
+            const svgBlob = new Blob([svgString], {type: 'image/svg+xml;charset=utf-8'});
+            const url = URL.createObjectURL(svgBlob);
+            
+            img.onload = () => {
+                // Set canvas dimensions to match SVG viewBox
+                canvas.width = exportSVG.getAttribute('width');
+                canvas.height = exportSVG.getAttribute('height');
+                
+                // Fill with white background
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw SVG image
+                ctx.drawImage(img, 0, 0);
+                
+                // Clean up URL
+                URL.revokeObjectURL(url);
+                
+                // Create download link
+                const pngUrl = canvas.toDataURL('image/png');
+                const a = document.createElement('a');
+                a.href = pngUrl;
+                a.download = `gantt-chart-${new Date().toISOString().slice(0,10)}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                loading.classList.remove('active');
+                showToast('Chart exported as PNG!');
+            };
+            
+            img.onerror = () => {
+                loading.classList.remove('active');
+                showToast('Failed to export image. Please try again.', 'error');
+                URL.revokeObjectURL(url);
+            };
+            
+            img.src = url;
+        });
+
+        document.getElementById('exportSVG').addEventListener('click', () => {
+            if (!networkGraph || Object.keys(networkGraph).length === 0) {
+                showToast('Please generate a chart first', 'warning');
+                return;
+            }
+
+            const loading = document.getElementById('loadingOverlay');
+            loading.classList.add('active');
+
+            // Create a clean SVG for export (uses absolute colors)
+            const exportSVG = createExportSVG();
+            
+            if (!exportSVG) {
+                loading.classList.remove('active');
+                return;
+            }
+
+            // Serialize SVG to string
+            const serializer = new XMLSerializer();
+            let source = serializer.serializeToString(exportSVG);
+            
+            // Ensure proper XML namespace
+            if (!source.includes('xmlns="http://www.w3.org/2000/svg"')) {
+                source = source.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+            }
+            
+            // Create download link
+            const svgBlob = new Blob([source], {type: 'image/svg+xml;charset=utf-8'});
+            const url = URL.createObjectURL(svgBlob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `gantt-chart-${new Date().toISOString().slice(0,10)}.svg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            loading.classList.remove('active');
+            showToast('Chart exported as SVG!');
+        });
+
+        document.getElementById('exportPDF').addEventListener('click', () => {
+            showToast('PDF export coming soon!', 'warning');
+        });
+
+        // Floating action button
+        document.getElementById('fabTop').addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // Initialize with sample data
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                document.getElementById('loadSample').click();
+                setTimeout(() => {
+                    document.getElementById('calculateCPM').click();
+                }, 500);
+            }, 300);
+        });
+
+        // Update chart on control changes
+        document.getElementById('showLabels').addEventListener('change', drawGanttChart);
+        document.getElementById('showCriticalPath').addEventListener('change', drawGanttChart);
+        document.getElementById('showPredecessors').addEventListener('change', drawGanttChart);
+        document.getElementById('dayWidth').addEventListener('change', drawGanttChart);
+        document.getElementById('minDay').addEventListener('change', drawGanttChart);
+        document.getElementById('maxDay').addEventListener('change', drawGanttChart);
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'd') {
+                e.preventDefault();
+                document.getElementById('draw').click();
+            }
+            if (e.ctrlKey && e.key === 'n') {
+                e.preventDefault();
+                document.getElementById('addRow').click();
+            }
+            if (e.ctrlKey && e.key === 'l') {
+                e.preventDefault();
+                document.getElementById('loadSample').click();
+            }
+            if (e.ctrlKey && e.key === 'c') {
+                e.preventDefault();
+                document.getElementById('calculateCPM').click();
+            }
+            if (e.ctrlKey && e.key === 't') {
+                e.preventDefault();
+                document.getElementById('themeToggle').click();
+            }
+        });
+    </script>
+</body>
+</html>
